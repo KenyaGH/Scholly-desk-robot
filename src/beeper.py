@@ -1,40 +1,33 @@
 """
-beeper.py — USB speaker beep utilities
-
-Usage:
-    from beeper import beep, beep_warning, beep_finish
+beeper.py — USB speaker beep utilities (uses pygame.mixer, no pyaudio needed)
 """
 
 import time
 import threading
 
 import numpy as np
+import pygame
 
-try:
-    import pyaudio
-    AUDIO_AVAILABLE = True
-except ImportError:
-    AUDIO_AVAILABLE = False
-    print("[beeper] pyaudio not found — install with: pip install pyaudio")
+
+def _ensure_mixer():
+    if not pygame.mixer.get_init():
+        pygame.mixer.init(frequency=44100, size=-16, channels=1, buffer=512)
 
 
 def _play_tone(frequency=1000, duration=0.3, volume=0.5):
-    """Play a sine-wave tone on the USB speaker (non-blocking)."""
-    if not AUDIO_AVAILABLE:
-        return
-
+    """Play a sine-wave tone (non-blocking)."""
     def _worker():
         try:
-            rate = 44100
-            t = np.linspace(0, duration, int(rate * duration), endpoint=False)
-            tone = (np.sin(2 * np.pi * frequency * t) * 32767 * volume).astype(np.int16)
-
-            p = pyaudio.PyAudio()
-            stream = p.open(format=pyaudio.paInt16, channels=1, rate=rate, output=True)
-            stream.write(tone.tobytes())
-            stream.stop_stream()
-            stream.close()
-            p.terminate()
+            _ensure_mixer()
+            rate, _, channels = pygame.mixer.get_init()
+            n = int(rate * duration)
+            t = np.linspace(0, duration, n, endpoint=False)
+            wave = (np.sin(2 * np.pi * frequency * t) * 32767 * volume).astype(np.int16)
+            if channels == 2:
+                wave = np.ascontiguousarray(np.column_stack([wave, wave]))
+            sound = pygame.sndarray.make_sound(wave)
+            sound.play()
+            time.sleep(duration + 0.05)
         except Exception as e:
             print(f"[beeper] Playback error: {e}")
 

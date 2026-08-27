@@ -112,8 +112,7 @@ def calculate_angle(a, b, c):
 
 
 # ─── POSTURE SCORING ──────────────────────────────────────────────────────────
-# This is where the actual posture logic lives.
-# We check 3 things and combine them into a score from 0–100.
+# This is where the actual posture logic lives.# We check 3 things and combine them into a score from 0–100.
 #
 #   1. Neck angle    — ear → shoulder → hip (weight: 40%)
 #   2. Torso angle   — shoulder → hip → point below hip (weight: 40%)
@@ -259,7 +258,7 @@ def main():
     global current_model_idx
 
     # 👉 Change 0 to 1 or 2 if your laptop has multiple cameras
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(4)
 
     if not cap.isOpened():
         print("ERROR: Could not open camera. Check that your webcam is connected.")
