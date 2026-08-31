@@ -1,14 +1,18 @@
 """
 scholly_animations.py
 ─────────────────────
-5 expressions + idle look-around animation for Scholly.
+9 expressions + idle look-around animation for Scholly.
 
 Expressions:
-    'neutral'  — ᵕ —   default
-    'happy'    ● — ●   petted / goal met
-    'angry'    ◣ ◢     bad posture
-    'sad'      ○ △ ○   posture warning / sad
-    'dead'     × ×     error / off
+    'neutral'   — ᵕ —   default / good posture
+    'happy'     ○ ‿ ○   petted / goal met
+    'angry'     ◣ ◢     bad posture (SIT UP!)
+    'sad'       ○ △ ○   posture warning / sad
+    'dead'      × ×     error / off
+    'worried'   ⌒ ⌒     adjust posture warning
+    'surprised' ◎ ◎     shock / very bad posture
+    'sleepy'    — — —   long idle / bored
+    'excited'   ● ‿‿ ●  timer done / celebration
 
 Idle behaviour:
     Scholly glances left, right, up, then returns to neutral.
@@ -54,14 +58,19 @@ EY = HEIGHT * 38 // 100      # eye y        ~91
 MX = WIDTH  // 2             # mouth x
 MY = HEIGHT * 66 // 100      # mouth y      ~158
 
-EXPRESSIONS = ['neutral', 'happy', 'angry', 'sad', 'dead']
+EXPRESSIONS = ['neutral', 'happy', 'angry', 'sad', 'dead',
+               'worried', 'surprised', 'sleepy', 'excited']
 
 _BG = {
-    'neutral': (5,  5,  5),
-    'happy':   (8,  8,  25),
-    'angry':   (28, 4,  4),
-    'sad':     (5,  5,  30),
-    'dead':    (8,  8,  8),
+    'neutral':   (5,  5,  5),
+    'happy':     (8,  8,  25),
+    'angry':     (28, 4,  4),
+    'sad':       (5,  5,  30),
+    'dead':      (8,  8,  8),
+    'worried':   (20, 5,  20),
+    'surprised': (3,  3,  15),
+    'sleepy':    (5,  8,  15),
+    'excited':   (5,  5,  35),
 }
 
 _clock = None
@@ -130,6 +139,31 @@ def _eyes_dead(s, lx, rx, ey):
         _line(s, cx-r, ey-r, cx+r, ey+r, WHITE, 3)
         _line(s, cx+r, ey-r, cx-r, ey+r, WHITE, 3)
 
+def _eyes_worried(s, lx, rx, ey):
+    """○ ○  circles + worry brows (inner corners raised)"""
+    for cx in [lx, rx]:
+        _circle(s, WHITE, cx, ey, U, 2)
+    _line(s, lx - U, ey - U + 2, lx + U, ey - U - 6, WHITE, 2)
+    _line(s, rx - U, ey - U - 6, rx + U, ey - U + 2, WHITE, 2)
+
+def _eyes_surprised(s, lx, rx, ey):
+    """◎ ◎  large wide-open circles"""
+    for cx in [lx, rx]:
+        _circle(s, WHITE, cx, ey, int(U * 1.4), 2)
+
+def _eyes_sleepy(s, lx, rx, ey):
+    """— —  half-closed droopy eyes (bottom arc + flat lid)"""
+    for cx in [lx, rx]:
+        _arc(s, WHITE, (cx - U, ey - U, U * 2, U * 2), math.pi, 2 * math.pi, 2)
+        _line(s, cx - U, ey, cx + U, ey)
+
+def _eyes_excited(s, lx, rx, ey):
+    """● ●  filled bright eyes with sparkle highlight"""
+    for cx in [lx, rx]:
+        _circle(s, WHITE, cx, ey, U)
+        _circle(s, (0, 0, 40), cx, ey, U - 6)
+        _circle(s, WHITE, cx - 5, ey - 5, 3)
+
 
 # ══════════════════════════════════════════════════════════════════
 #  BLINK LID
@@ -172,6 +206,25 @@ def _mouth_dead(s):
     hw = int(U * 1.2)
     _line(s, MX - hw, MY, MX + hw, MY)
 
+def _mouth_worried(s):
+    """slight frown arc"""
+    hw = int(U * 1.0)
+    _arc(s, WHITE, (MX - hw, MY, hw * 2, U), 0, math.pi, 2)
+
+def _mouth_surprised(s):
+    """open O mouth"""
+    _circle(s, WHITE, MX, MY, int(U * 0.6), 2)
+
+def _mouth_sleepy(s):
+    """small flat line"""
+    hw = int(U * 0.8)
+    _line(s, MX - hw, MY, MX + hw, MY)
+
+def _mouth_excited(s):
+    """extra-wide thick smile"""
+    hw = int(U * 1.8)
+    _arc(s, WHITE, (MX - hw, MY - U, hw * 2, U * 2), math.pi, 2 * math.pi, 4)
+
 
 # ══════════════════════════════════════════════════════════════════
 #  CORE RENDERER
@@ -197,6 +250,14 @@ def _draw_face(surface, expression, blink_amount=0.0,
         _eyes_sad(surface, lx, rx, ey)
     elif expression == 'dead':
         _eyes_dead(surface, lx, rx, ey)
+    elif expression == 'worried':
+        _eyes_worried(surface, lx, rx, ey)
+    elif expression == 'surprised':
+        _eyes_surprised(surface, lx, rx, ey)
+    elif expression == 'sleepy':
+        _eyes_sleepy(surface, lx, rx, ey)
+    elif expression == 'excited':
+        _eyes_excited(surface, lx, rx, ey)
 
     # ── Blink lid (not on dead) ────────────────────────────────────
     if blink_amount > 0 and expression != 'dead':
@@ -214,6 +275,14 @@ def _draw_face(surface, expression, blink_amount=0.0,
         _mouth_sad(surface)
     elif expression == 'dead':
         _mouth_dead(surface)
+    elif expression == 'worried':
+        _mouth_worried(surface)
+    elif expression == 'surprised':
+        _mouth_surprised(surface)
+    elif expression == 'sleepy':
+        _mouth_sleepy(surface)
+    elif expression == 'excited':
+        _mouth_excited(surface)
 
     pygame.display.flip()
 

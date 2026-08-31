@@ -120,7 +120,8 @@ class TaskManager:
         self._posture_lock  = threading.Lock()
 
         # face state
-        self._expression = "neutral"
+        self._expression    = "neutral"
+        self._posture_label = ""
         self._last_blink = time.time()
         self._blink_iv   = random.uniform(3, 6)
         self._last_idle  = time.time()
@@ -273,13 +274,14 @@ class TaskManager:
 
     def _on_timer_done(self):
         print("[task] timer done")
-        self._set_expr("happy")
+        self._set_expr("excited")
         self.feedback.play_alert()
 
     def _return_to_idle(self):
         self.timer.stop()
-        self.setting_timer = False
-        self.asking_phone  = False
+        self.setting_timer  = False
+        self.asking_phone   = False
+        self._posture_label = ""
         self.phone_sensor.stop_monitoring()
         self._set_expr("neutral")
         print("[task] → idle")
@@ -365,6 +367,14 @@ class TaskManager:
             col = GREEN if score >= 75 else ORANGE if score >= 50 else RED
             ps = self._f_sm.render(f"Posture: {label}  ({score}/100)", True, col)
             self.screen.blit(ps, (rx, SCREEN_H - 40))
+            if self.timer.is_running and label != self._posture_label:
+                self._posture_label = label
+                if score >= 75:
+                    self._set_expr('neutral')
+                elif score >= 50:
+                    self._set_expr('worried')
+                else:
+                    self._set_expr('angry')
 
     def _render(self):
         # Draw background and right panel FIRST so they are on the screen buffer
