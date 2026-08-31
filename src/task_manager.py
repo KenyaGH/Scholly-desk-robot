@@ -54,7 +54,7 @@ except ImportError:
     CV2_AVAILABLE = False
     print("[task] cv2 not available — camera disabled")
 
-from timer_manager import TimerManager
+from src.timer_manager import TimerManager
 import src.scholly_animations as face
 from src.robot_feedback import RobotFeedback
 from src.posture_detection import (
@@ -62,7 +62,7 @@ from src.posture_detection import (
     calibrate as calibrate_posture,
     get_status,
 )
-from phone_sensor import PhoneSensor
+from src.phone_sensor import PhoneSensor
 
 # ── GPIO pins (BCM) ───────────────────────────────────────────────────────────
 
