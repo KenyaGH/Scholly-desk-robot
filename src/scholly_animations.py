@@ -306,15 +306,18 @@ def transition(surface, from_expr, to_expr, steps=12):
         if _clock: _clock.tick(60)
 
 
-def blink(surface, expression, look_x=0, look_y=0):
+def blink(surface, expression, look_x=0, look_y=0, black_bg=False):
     """Single natural blink."""
     for amt in [0.0, 0.3, 0.6, 0.9, 1.0, 0.9, 0.6, 0.3, 0.0]:
-        _draw_face(surface, expression,
-                   blink_amount=amt, look_x=look_x, look_y=look_y)
+        if black_bg:
+            _nb(surface, look_x=look_x, look_y=look_y, blink_amount=amt)
+        else:
+            _draw_face(surface, expression,
+                       blink_amount=amt, look_x=look_x, look_y=look_y)
         if _clock: _clock.tick(60)
 
 
-def _glide(surface, expression, from_xy, to_xy, steps=14):
+def _glide(surface, expression, from_xy, to_xy, steps=14, black_bg=False):
     """Smoothly slide eyes from one position to another."""
     fx, fy = from_xy
     tx, ty = to_xy
@@ -322,37 +325,148 @@ def _glide(surface, expression, from_xy, to_xy, steps=14):
         p  = i / steps
         lx = int(fx + (tx - fx) * p)
         ly = int(fy + (ty - fy) * p)
-        _draw_face(surface, expression, look_x=lx, look_y=ly)
+        if black_bg:
+            _nb(surface, look_x=lx, look_y=ly)
+        else:
+            _draw_face(surface, expression, look_x=lx, look_y=ly)
         if _clock: _clock.tick(60)
+
+
+_idle_cycle = 0
+
+
+def _nb(surface, look_x=0, look_y=0, mouth_fn=None, blink_amount=0.0):
+    """Draw neutral face on black with optional overrides."""
+    surface.fill(BLACK)
+    lx = LX + look_x
+    rx = RX + look_x
+    ey = EY + look_y
+    _eyes_neutral(surface, lx, rx, ey)
+    if blink_amount > 0:
+        _blink_lid(surface, lx, ey, blink_amount, BLACK)
+        _blink_lid(surface, rx, ey, blink_amount, BLACK)
+    (mouth_fn or _mouth_neutral)(surface)
+    pygame.display.flip()
+
+
+def _idle_look_around(surface):
+    """Eyes glide left → right → up → centre, then blink."""
+    _glide(surface, 'neutral', (0, 0), (-12, 0), black_bg=True)
+    for _ in range(18):
+        _nb(surface, look_x=-12)
+        if _clock: _clock.tick(60)
+
+    _glide(surface, 'neutral', (-12, 0), (12, 0), black_bg=True)
+    for _ in range(18):
+        _nb(surface, look_x=12)
+        if _clock: _clock.tick(60)
+
+    _glide(surface, 'neutral', (12, 0), (0, -10), black_bg=True)
+    for _ in range(14):
+        _nb(surface, look_y=-10)
+        if _clock: _clock.tick(60)
+
+    _glide(surface, 'neutral', (0, -10), (0, 0), black_bg=True)
+    blink(surface, 'neutral', black_bg=True)
+
+
+def _idle_smile(surface):
+    """Neutral face warms into a gentle smile, holds, then returns."""
+    # Rise: flat mouth → full smile over 20 frames
+    for i in range(20):
+        p  = i / 19
+        rp = max(0.0, (p - 0.2) / 0.8)
+        surface.fill(BLACK)
+        _eyes_neutral(surface, LX, RX, EY)
+        if rp < 0.05:
+            _mouth_neutral(surface)
+        else:
+            hw = max(6, int(U * 1.6 * rp))
+            h  = max(4, int(U * 2   * rp))
+            _arc(surface, WHITE,
+                 (MX - hw, MY - h // 2, hw * 2, h),
+                 math.pi, 2 * math.pi, 2)
+        pygame.display.flip()
+        if _clock: _clock.tick(60)
+
+    # Hold smile with one blink in the middle
+    for f in range(55):
+        if f == 27:
+            for amt in [0.3, 0.7, 1.0, 0.7, 0.3, 0.0]:
+                surface.fill(BLACK)
+                _eyes_neutral(surface, LX, RX, EY)
+                _mouth_happy(surface)
+                _blink_lid(surface, LX, EY, amt, BLACK)
+                _blink_lid(surface, RX, EY, amt, BLACK)
+                pygame.display.flip()
+                if _clock: _clock.tick(60)
+        _nb(surface, mouth_fn=_mouth_happy)
+        if _clock: _clock.tick(60)
+
+    # Fade back to neutral over 20 frames
+    for i in range(20):
+        p  = 1 - i / 19
+        rp = max(0.0, (p - 0.2) / 0.8)
+        surface.fill(BLACK)
+        _eyes_neutral(surface, LX, RX, EY)
+        if rp < 0.05:
+            _mouth_neutral(surface)
+        else:
+            hw = max(6, int(U * 1.6 * rp))
+            h  = max(4, int(U * 2   * rp))
+            _arc(surface, WHITE,
+                 (MX - hw, MY - h // 2, hw * 2, h),
+                 math.pi, 2 * math.pi, 2)
+        pygame.display.flip()
+        if _clock: _clock.tick(60)
+
+    _nb(surface)
+
+
+def _idle_think(surface):
+    """Eyes drift upper-right as if thinking, pause, then return."""
+    _glide(surface, 'neutral', (0, 0), (10, -8))
+
+    hw = int(U * 1.4)
+    for _ in range(55):
+        surface.fill(BLACK)
+        _eyes_neutral(surface, LX + 10, RX + 10, EY - 8)
+        pygame.draw.line(surface, WHITE, (MX - hw, MY + 3), (MX + hw, MY - 3), 2)
+        pygame.display.flip()
+        if _clock: _clock.tick(60)
+
+    _glide(surface, 'neutral', (10, -8), (0, 0), black_bg=True)
+    blink(surface, 'neutral', black_bg=True)
+
+
+def _idle_doze(surface):
+    """Eyes slowly close, hold asleep, then slowly open."""
+    steps = 30
+
+    for i in range(steps + 1):         # close
+        _nb(surface, blink_amount=i / steps)
+        if _clock: _clock.tick(30)
+
+    for _ in range(70):                 # asleep
+        surface.fill(BLACK)
+        _eyes_sleepy(surface, LX, RX, EY)
+        _mouth_sleepy(surface)
+        pygame.display.flip()
+        if _clock: _clock.tick(30)
+
+    for i in range(steps + 1):         # open
+        _nb(surface, blink_amount=1.0 - i / steps)
+        if _clock: _clock.tick(30)
+
+    blink(surface, 'neutral', black_bg=True)
 
 
 def idle(surface):
-    """
-    Idle look-around: ○-○ eyes glide left → right → up → centre.
-    Ends with a blink. Only call when expression is 'neutral'.
-    """
-    centre = (0,    0)
-    left   = (-12,  0)
-    right  = ( 12,  0)
-    up     = (  0, -10)
-
-    _glide(surface, 'neutral', centre, left)     # slide left
-    for _ in range(18):                           # hold
-        _draw_face(surface, 'neutral', look_x=-12)
-        if _clock: _clock.tick(60)
-
-    _glide(surface, 'neutral', left, right)      # slide right
-    for _ in range(18):                           # hold
-        _draw_face(surface, 'neutral', look_x=12)
-        if _clock: _clock.tick(60)
-
-    _glide(surface, 'neutral', right, up)        # slide up
-    for _ in range(14):                           # hold
-        _draw_face(surface, 'neutral', look_y=-10)
-        if _clock: _clock.tick(60)
-
-    _glide(surface, 'neutral', up, centre)       # return centre
-    blink(surface, 'neutral')                    # blink to settle
+    """Cycle through idle animations consecutively."""
+    global _idle_cycle
+    _animations = [_idle_look_around, _idle_smile, _idle_think, _idle_doze]
+    _animations[_idle_cycle % len(_animations)](surface)
+    _idle_cycle += 1
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -371,10 +485,11 @@ def _demo():
     last_blink = time.time()
     last_idle  = time.time()
     blink_iv   = random.uniform(3, 6)
-    idle_iv    = random.uniform(8, 14)   # how often idle triggers
+    idle_iv    = 4.0   # short interval so all 4 idle animations play quickly in demo
 
     print("← → cycle expressions | I = trigger idle | ESC quit")
     print(f"Expressions: {EXPRESSIONS}")
+    print("Idle animations cycle: look_around → smile → think → doze → ...")
 
     running = True
     while running:
