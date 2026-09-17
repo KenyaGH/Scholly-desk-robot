@@ -25,7 +25,7 @@ try:
         min_tracking_confidence=0.5,
     )
     MEDIAPIPE_AVAILABLE = True
-except ImportError:
+except (ImportError, AttributeError):
     MEDIAPIPE_AVAILABLE = False
     print("[posture] mediapipe not available — posture detection disabled")
 
